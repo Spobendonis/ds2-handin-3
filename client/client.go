@@ -22,24 +22,29 @@ var (
 
 func main() {
 	flag.Parse()
+	conn := ConnectToServer(*serverPort)
+	c := pb.NewTemplateClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	for {
 		reader := bufio.NewReader(os.Stdin)
 		_, readerErr := reader.ReadString('\n')
 		if readerErr != nil {
 			log.Fatal(readerErr)
 		}
-		conn, connectionErr := grpc.Dial(*serverPort, grpc.WithTransportCredentials(insecure.NewCredentials()))
-		if connectionErr != nil {
-			log.Fatalf("did not connect: %v", connectionErr)
-		}
-		defer conn.Close()
-		c := pb.NewTemplateClient(conn)
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
 		r, requestErr := c.GetWeather(ctx, &pb.WeatherRequest{Clientport: *clientPort, Location: ""})
 		fmt.Println(r.GetWeather())
 		if requestErr != nil {
 			log.Fatal(requestErr)
 		}
 	}
+	conn.Close()
+	cancel()
+}
+
+func ConnectToServer(port string) *grpc.ClientConn {
+	conn, connectionErr := grpc.Dial(port, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if connectionErr != nil {
+		log.Fatalf("did not connect: %v", connectionErr)
+	}
+	return conn
 }
