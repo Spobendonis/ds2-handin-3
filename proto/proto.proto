@@ -7,14 +7,29 @@ package proto;
 
 service Template
 {
-    rpc GetWeather (WeatherRequest) returns (WeatherReply);
+    // send message
+    rpc SendChatMessage (stream OutgoingChatMessage) returns (IncomingChatMessage);
 }
 
-message WeatherRequest {
-    string clientport = 1;
-    string location = 2;
+
+message OutgoingChatMessage {
+    string userName = 1;
+    string message = 2;
+
+    //(int64, int64) logTime = 3;
+
+    int64 process = 3;
+    int64 actions = 4;
 }
 
-message WeatherReply {
-    string weather = 1;
+
+message IncomingChatMessage {
+    string userName = 1;
+    string message = 2;
+
+    int64 process = 3;
+    int64 actions = 4;
 }
+
+
+

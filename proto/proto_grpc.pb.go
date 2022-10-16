@@ -18,7 +18,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TemplateClient interface {
-	GetWeather(ctx context.Context, in *WeatherRequest, opts ...grpc.CallOption) (*WeatherReply, error)
+	// send message
+	SendChatMessage(ctx context.Context, opts ...grpc.CallOption) (Template_SendChatMessageClient, error)
 }
 
 type templateClient struct {
@@ -29,20 +30,46 @@ func NewTemplateClient(cc grpc.ClientConnInterface) TemplateClient {
 	return &templateClient{cc}
 }
 
-func (c *templateClient) GetWeather(ctx context.Context, in *WeatherRequest, opts ...grpc.CallOption) (*WeatherReply, error) {
-	out := new(WeatherReply)
-	err := c.cc.Invoke(ctx, "/proto.Template/GetWeather", in, out, opts...)
+func (c *templateClient) SendChatMessage(ctx context.Context, opts ...grpc.CallOption) (Template_SendChatMessageClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Template_ServiceDesc.Streams[0], "/proto.Template/SendChatMessage", opts...)
 	if err != nil {
 		return nil, err
 	}
-	return out, nil
+	x := &templateSendChatMessageClient{stream}
+	return x, nil
+}
+
+type Template_SendChatMessageClient interface {
+	Send(*OutgoingChatMessage) error
+	CloseAndRecv() (*IncomingChatMessage, error)
+	grpc.ClientStream
+}
+
+type templateSendChatMessageClient struct {
+	grpc.ClientStream
+}
+
+func (x *templateSendChatMessageClient) Send(m *OutgoingChatMessage) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *templateSendChatMessageClient) CloseAndRecv() (*IncomingChatMessage, error) {
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	m := new(IncomingChatMessage)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 // TemplateServer is the server API for Template service.
 // All implementations must embed UnimplementedTemplateServer
 // for forward compatibility
 type TemplateServer interface {
-	GetWeather(context.Context, *WeatherRequest) (*WeatherReply, error)
+	// send message
+	SendChatMessage(Template_SendChatMessageServer) error
 	mustEmbedUnimplementedTemplateServer()
 }
 
@@ -50,8 +77,8 @@ type TemplateServer interface {
 type UnimplementedTemplateServer struct {
 }
 
-func (UnimplementedTemplateServer) GetWeather(context.Context, *WeatherRequest) (*WeatherReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetWeather not implemented")
+func (UnimplementedTemplateServer) SendChatMessage(Template_SendChatMessageServer) error {
+	return status.Errorf(codes.Unimplemented, "method SendChatMessage not implemented")
 }
 func (UnimplementedTemplateServer) mustEmbedUnimplementedTemplateServer() {}
 
@@ -66,22 +93,30 @@ func RegisterTemplateServer(s grpc.ServiceRegistrar, srv TemplateServer) {
 	s.RegisterService(&Template_ServiceDesc, srv)
 }
 
-func _Template_GetWeather_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(WeatherRequest)
-	if err := dec(in); err != nil {
+func _Template_SendChatMessage_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(TemplateServer).SendChatMessage(&templateSendChatMessageServer{stream})
+}
+
+type Template_SendChatMessageServer interface {
+	SendAndClose(*IncomingChatMessage) error
+	Recv() (*OutgoingChatMessage, error)
+	grpc.ServerStream
+}
+
+type templateSendChatMessageServer struct {
+	grpc.ServerStream
+}
+
+func (x *templateSendChatMessageServer) SendAndClose(m *IncomingChatMessage) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *templateSendChatMessageServer) Recv() (*OutgoingChatMessage, error) {
+	m := new(OutgoingChatMessage)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
-	if interceptor == nil {
-		return srv.(TemplateServer).GetWeather(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Template/GetWeather",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TemplateServer).GetWeather(ctx, req.(*WeatherRequest))
-	}
-	return interceptor(ctx, in, info, handler)
+	return m, nil
 }
 
 // Template_ServiceDesc is the grpc.ServiceDesc for Template service.
@@ -90,12 +125,13 @@ func _Template_GetWeather_Handler(srv interface{}, ctx context.Context, dec func
 var Template_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.Template",
 	HandlerType: (*TemplateServer)(nil),
-	Methods: []grpc.MethodDesc{
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
 		{
-			MethodName: "GetWeather",
-			Handler:    _Template_GetWeather_Handler,
+			StreamName:    "SendChatMessage",
+			Handler:       _Template_SendChatMessage_Handler,
+			ClientStreams: true,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
 	Metadata: "proto/proto.proto",
 }
