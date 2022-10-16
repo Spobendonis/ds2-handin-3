@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
-	"fmt"
 	"log"
-	"os"
 	"time"
 
 	pb "proto/proto"
@@ -16,6 +13,7 @@ import (
 )
 
 var (
+	userName   = flag.String("username", "anonymous", "The name others will see you by")
 	serverPort = flag.String("sPort", ":50051", "The port of the server")
 	clientPort = flag.String("cPort", ":10000", "The port of the client")
 )
@@ -25,18 +23,20 @@ func main() {
 	conn := ConnectToServer(*serverPort)
 	c := pb.NewTemplateClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	for {
-		reader := bufio.NewReader(os.Stdin)
-		_, readerErr := reader.ReadString('\n')
-		if readerErr != nil {
-			log.Fatal(readerErr)
-		}
-		r, requestErr := c.GetWeather(ctx, &pb.WeatherRequest{Clientport: *clientPort, Location: ""})
-		fmt.Println(r.GetWeather())
-		if requestErr != nil {
-			log.Fatal(requestErr)
-		}
+	// get a stream to the server
+	stream, err := c.SendChatMessage(ctx)
+	if err != nil {
+		log.Println(err)
+		return
 	}
+
+	// send some messages to the server
+	stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: "hello world"})
+	stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 2, Message: "the sequel"})
+	stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 3, Message: "the seqseqsequel"})
+
+	// close the stream
+	stream.CloseSend()
 	conn.Close()
 	cancel()
 }
