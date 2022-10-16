@@ -41,7 +41,7 @@ func (c *templateClient) SendChatMessage(ctx context.Context, opts ...grpc.CallO
 
 type Template_SendChatMessageClient interface {
 	Send(*OutgoingChatMessage) error
-	CloseAndRecv() (*IncomingChatMessage, error)
+	Recv() (*IncomingChatMessage, error)
 	grpc.ClientStream
 }
 
@@ -53,10 +53,7 @@ func (x *templateSendChatMessageClient) Send(m *OutgoingChatMessage) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *templateSendChatMessageClient) CloseAndRecv() (*IncomingChatMessage, error) {
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
+func (x *templateSendChatMessageClient) Recv() (*IncomingChatMessage, error) {
 	m := new(IncomingChatMessage)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -98,7 +95,7 @@ func _Template_SendChatMessage_Handler(srv interface{}, stream grpc.ServerStream
 }
 
 type Template_SendChatMessageServer interface {
-	SendAndClose(*IncomingChatMessage) error
+	Send(*IncomingChatMessage) error
 	Recv() (*OutgoingChatMessage, error)
 	grpc.ServerStream
 }
@@ -107,7 +104,7 @@ type templateSendChatMessageServer struct {
 	grpc.ServerStream
 }
 
-func (x *templateSendChatMessageServer) SendAndClose(m *IncomingChatMessage) error {
+func (x *templateSendChatMessageServer) Send(m *IncomingChatMessage) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -130,6 +127,7 @@ var Template_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "SendChatMessage",
 			Handler:       _Template_SendChatMessage_Handler,
+			ServerStreams: true,
 			ClientStreams: true,
 		},
 	},

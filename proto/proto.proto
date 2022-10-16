@@ -8,7 +8,7 @@ package proto;
 service Template
 {
     // send message
-    rpc SendChatMessage (stream OutgoingChatMessage) returns (IncomingChatMessage);
+    rpc SendChatMessage (stream OutgoingChatMessage) returns (stream IncomingChatMessage);
 }
 
 

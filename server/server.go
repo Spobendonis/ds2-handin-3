@@ -1,9 +1,9 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 
@@ -20,7 +20,22 @@ type Server struct {
 	pb.UnimplementedTemplateServer
 }
 
-func (s *Server) SendChatMessage(ctx context.Context) error {
+func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) error {
+	for {
+		// get the next message from the stream
+		msg, err := msgStream.Recv()
+
+		// the stream is closed so we can exit the loop
+		if err == io.EOF {
+			break
+		}
+		// some other error
+		if err != nil {
+			return err
+		}
+		// log the message
+		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
+	}
 	return nil
 }
 
@@ -33,9 +48,7 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 
-	server := &Server{}
-
-	pb.RegisterTemplateServer(grpcServer, server)
+	pb.RegisterTemplateServer(grpcServer, &Server{})
 
 	grpcServer.Serve(lis)
 }
