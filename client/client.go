@@ -37,17 +37,17 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		if scanner.Scan() {
 			line = scanner.Text()
-		}
-		switch line {
-		case "exit":
-			stream.CloseSend()
-			conn.Close()
-			cancel()
-			log.Fatal("Goodbye ", *userName)
-		default:
-			stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: line})
-		}
 
+			switch line {
+			case "exit":
+				stream.CloseSend()
+				conn.Close()
+				cancel()
+				log.Fatal("Goodbye ", *userName)
+			default:
+				stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: line})
+			}
+		}
 	}
 }
 
