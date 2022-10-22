@@ -6,7 +6,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"time"
 
 	pb "proto/proto"
 
@@ -24,7 +23,7 @@ func main() {
 	conn := ConnectToServer(*serverPort)
 	defer conn.Close()
 	c := pb.NewTemplateClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	// get a stream to the server
 	stream, err := c.SendChatMessage(ctx)
