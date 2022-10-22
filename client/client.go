@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"log"
+	"os"
 	"time"
 
 	pb "proto/proto"
@@ -20,24 +22,33 @@ var (
 func main() {
 	flag.Parse()
 	conn := ConnectToServer(*serverPort)
+	defer conn.Close()
 	c := pb.NewTemplateClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	defer cancel()
 	// get a stream to the server
 	stream, err := c.SendChatMessage(ctx)
 	if err != nil {
 		log.Println(err)
 		return
 	}
+	for {
+		var line string
+		scanner := bufio.NewScanner(os.Stdin)
+		if scanner.Scan() {
+			line = scanner.Text()
+		}
+		switch line {
+		case "exit":
+			stream.CloseSend()
+			conn.Close()
+			cancel()
+			log.Fatal("Goodbye ", *userName)
+		default:
+			stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: line})
+		}
 
-	// send some messages to the server
-	stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: "hello world"})
-	stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 2, Message: "the sequel"})
-	stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 3, Message: "the seqseqsequel"})
-
-	// close the stream
-	stream.CloseSend()
-	conn.Close()
-	cancel()
+	}
 }
 
 func ConnectToServer(port string) *grpc.ClientConn {
