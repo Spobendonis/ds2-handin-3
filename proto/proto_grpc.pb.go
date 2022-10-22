@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion7
 type TemplateClient interface {
 	// send message
 	SendChatMessage(ctx context.Context, opts ...grpc.CallOption) (Template_SendChatMessageClient, error)
+	InitialiseConnection(ctx context.Context, in *Dummy, opts ...grpc.CallOption) (*ProcessMessage, error)
 }
 
 type templateClient struct {
@@ -61,12 +62,22 @@ func (x *templateSendChatMessageClient) Recv() (*IncomingChatMessage, error) {
 	return m, nil
 }
 
+func (c *templateClient) InitialiseConnection(ctx context.Context, in *Dummy, opts ...grpc.CallOption) (*ProcessMessage, error) {
+	out := new(ProcessMessage)
+	err := c.cc.Invoke(ctx, "/proto.Template/InitialiseConnection", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TemplateServer is the server API for Template service.
 // All implementations must embed UnimplementedTemplateServer
 // for forward compatibility
 type TemplateServer interface {
 	// send message
 	SendChatMessage(Template_SendChatMessageServer) error
+	InitialiseConnection(context.Context, *Dummy) (*ProcessMessage, error)
 	mustEmbedUnimplementedTemplateServer()
 }
 
@@ -76,6 +87,9 @@ type UnimplementedTemplateServer struct {
 
 func (UnimplementedTemplateServer) SendChatMessage(Template_SendChatMessageServer) error {
 	return status.Errorf(codes.Unimplemented, "method SendChatMessage not implemented")
+}
+func (UnimplementedTemplateServer) InitialiseConnection(context.Context, *Dummy) (*ProcessMessage, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method InitialiseConnection not implemented")
 }
 func (UnimplementedTemplateServer) mustEmbedUnimplementedTemplateServer() {}
 
@@ -116,13 +130,36 @@ func (x *templateSendChatMessageServer) Recv() (*OutgoingChatMessage, error) {
 	return m, nil
 }
 
+func _Template_InitialiseConnection_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(Dummy)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TemplateServer).InitialiseConnection(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Template/InitialiseConnection",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TemplateServer).InitialiseConnection(ctx, req.(*Dummy))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Template_ServiceDesc is the grpc.ServiceDesc for Template service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var Template_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "proto.Template",
 	HandlerType: (*TemplateServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "InitialiseConnection",
+			Handler:    _Template_InitialiseConnection_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "SendChatMessage",
