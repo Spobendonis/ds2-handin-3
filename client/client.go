@@ -33,6 +33,7 @@ func main() {
 		return
 	}
 	for {
+
 		var line string
 		scanner := bufio.NewScanner(os.Stdin)
 		if scanner.Scan() {
@@ -48,6 +49,9 @@ func main() {
 				stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: line})
 			}
 		}
+
+		msg, _ := stream.Recv()
+		log.Printf("%s: %s", msg.UserName, msg.Message)
 	}
 }
 

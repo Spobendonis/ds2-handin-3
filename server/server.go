@@ -16,12 +16,40 @@ var (
 	port = flag.Int("port", 50051, "The server port")
 )
 
+var clientChannels []chan string
+
+func handleMessageReceived(message string) {
+
+	log.Print("Broadcasting")
+
+	for _, channel := range clientChannels {
+
+		channel <- message
+
+	}
+
+}
+
 type Server struct {
 	pb.UnimplementedTemplateServer
 }
 
 func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) error {
+
+	clientChannel := make(chan string, 2)
+	clientChannels = append(clientChannels, clientChannel)
+
+	log.Print("Connected")
+
 	for {
+
+		select {
+		case toSend := <-clientChannel:
+			toSendGRPC := &pb.IncomingChatMessage{UserName: "", Message: toSend, Process: 1, Actions: 1}
+			msgStream.Send(toSendGRPC)
+		default:
+		}
+
 		// get the next message from the stream
 		msg, err := msgStream.Recv()
 
@@ -35,6 +63,8 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 		}
 		// log the message
 		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
+		handleMessageReceived(msg.Message)
+
 	}
 	return nil
 }
