@@ -57,13 +57,11 @@ func main() {
 		}
 	}()
 
-	go func() {
+	for {
 		msg, _ := stream.Recv()
 		log.Printf("%s: %s", msg.UserName, msg.Message)
-	}()
-
-	for {
 	}
+
 }
 
 func ConnectToServer(port string) *grpc.ClientConn {
