@@ -15,7 +15,7 @@ import (
 
 var (
 	userName   = flag.String("username", "anonymous", "The name others will see you by")
-	serverPort = flag.String("sPort", ":50051", "The port of the server")
+	serverPort = flag.String("sPort", "172.20.10.4:50051", "The port of the server")
 )
 
 func main() {
