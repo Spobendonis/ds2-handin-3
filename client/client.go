@@ -14,15 +14,15 @@ import (
 )
 
 var (
-	userName   = flag.String("username", "anonymous", "The name others will see you by")
-	serverPort = flag.String("sPort", "172.20.10.4:50051", "The port of the server")
-	actions    = 0
-	process    = -1
+	userName      = flag.String("username", "anonymous", "The name others will see you by")
+	serverAddress = flag.String("sPort", "172.20.10.4:50051", "The port of the server")
+	actions       = 0
+	process       = -1
 )
 
 func main() {
 	flag.Parse()
-	conn := ConnectToServer(*serverPort)
+	conn := ConnectToServer(*serverAddress)
 	defer conn.Close()
 	c := pb.NewTemplateClient(conn)
 	ctx, cancel := context.WithCancel(context.Background())
