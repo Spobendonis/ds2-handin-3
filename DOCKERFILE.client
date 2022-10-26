@@ -12,4 +12,4 @@ COPY client/client.go ./
 
 RUN go build -o /client-bin
 
-CMD [ "/client-bin" ]
+ENTRYPOINT [ "/client-bin" ]
