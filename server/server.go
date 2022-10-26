@@ -18,17 +18,21 @@ var (
 	processes = 0
 )
 
-var clientChannels []chan string
+type messageStruct struct {
+	message  string
+	username string
+	process  int64
+	actions  int64
+}
 
-func handleMessageReceived(message string) {
+var clientChannels []chan messageStruct
+
+func handleMessageReceived(message string, username string, process int64, actions int64) {
 
 	log.Print("Broadcasting")
 
 	for _, channel := range clientChannels {
-
-		channel <- message
-		log.Print(message)
-
+		channel <- messageStruct{message, username, process, actions}
 	}
 
 }
@@ -44,20 +48,18 @@ func (s Server) InitialiseConnection(ctx context.Context, in *pb.Dummy) (*pb.Pro
 
 func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) error {
 
-	clientChannel := make(chan string, 2)
+	clientChannel := make(chan messageStruct, 2)
 	clientChannels = append(clientChannels, clientChannel)
 
 	log.Print("Connected")
+	handleMessageReceived("New user has connected", "", 0, 0)
 
 	go func() {
 		for {
-			select {
-			case toSend := <-clientChannel:
-				log.Print("Sending to client")
-				toSendGRPC := &pb.IncomingChatMessage{UserName: "", Message: toSend, Process: 1, Actions: 1}
-				msgStream.Send(toSendGRPC)
-			default:
-			}
+			toSend := <-clientChannel
+			log.Print("Sending to client")
+			toSendGRPC := &pb.IncomingChatMessage{UserName: toSend.username, Message: toSend.message, Process: toSend.process, Actions: toSend.actions}
+			msgStream.Send(toSendGRPC)
 		}
 	}()
 
@@ -75,8 +77,7 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 		}
 		// log the message
 		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
-		handleMessageReceived(msg.Message)
-
+		handleMessageReceived(msg.Message, msg.UserName, msg.Process, msg.Actions)
 	}
 	return nil
 }

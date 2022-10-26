@@ -59,7 +59,7 @@ func main() {
 
 	for {
 		msg, _ := stream.Recv()
-		log.Printf("%s: %s", msg.UserName, msg.Message)
+		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
 	}
 
 }
