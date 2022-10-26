@@ -27,6 +27,7 @@ func handleMessageReceived(message string) {
 	for _, channel := range clientChannels {
 
 		channel <- message
+		log.Print(message)
 
 	}
 
@@ -50,12 +51,14 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 
 	for {
 
-		select {
-		case toSend := <-clientChannel:
-			toSendGRPC := &pb.IncomingChatMessage{UserName: "", Message: toSend, Process: 1, Actions: 1}
-			msgStream.Send(toSendGRPC)
-		default:
-		}
+		go func() {
+			select {
+			case toSend := <-clientChannel:
+				toSendGRPC := &pb.IncomingChatMessage{UserName: "", Message: toSend, Process: 1, Actions: 1}
+				msgStream.Send(toSendGRPC)
+			default:
+			}
+		}()
 
 		// get the next message from the stream
 		msg, err := msgStream.Recv()
