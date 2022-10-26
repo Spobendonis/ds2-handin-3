@@ -49,17 +49,19 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 
 	log.Print("Connected")
 
-	for {
-
-		go func() {
+	go func() {
+		for {
 			select {
 			case toSend := <-clientChannel:
+				log.Print("Sending to client")
 				toSendGRPC := &pb.IncomingChatMessage{UserName: "", Message: toSend, Process: 1, Actions: 1}
 				msgStream.Send(toSendGRPC)
 			default:
 			}
-		}()
+		}
+	}()
 
+	for {
 		// get the next message from the stream
 		msg, err := msgStream.Recv()
 
