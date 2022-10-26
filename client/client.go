@@ -35,23 +35,33 @@ func main() {
 		log.Println(err)
 		return
 	}
-	for {
-		var line string
-		scanner := bufio.NewScanner(os.Stdin)
-		if scanner.Scan() {
-			line = scanner.Text()
-			actions++
-			switch line {
-			case "exit":
-				stream.CloseSend()
-				conn.Close()
-				cancel()
-				log.Fatal("Goodbye ", *userName)
-			default:
-				stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
+
+	var line string
+	scanner := bufio.NewScanner(os.Stdin)
+
+	go func() {
+		for {
+			if scanner.Scan() {
+				line = scanner.Text()
+				actions++
+				switch line {
+				case "exit":
+					stream.CloseSend()
+					conn.Close()
+					cancel()
+					log.Fatal("Goodbye ", *userName)
+				default:
+					stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
+				}
 			}
 		}
+	}()
+
+	for {
+		msg, _ := stream.Recv()
+		log.Printf("%s: %s", msg.UserName, msg.Message)
 	}
+
 }
 
 func ConnectToServer(port string) *grpc.ClientConn {

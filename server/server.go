@@ -18,6 +18,21 @@ var (
 	processes = 0
 )
 
+var clientChannels []chan string
+
+func handleMessageReceived(message string) {
+
+	log.Print("Broadcasting")
+
+	for _, channel := range clientChannels {
+
+		channel <- message
+		log.Print(message)
+
+	}
+
+}
+
 type Server struct {
 	pb.UnimplementedTemplateServer
 }
@@ -28,6 +43,24 @@ func (s Server) InitialiseConnection(ctx context.Context, in *pb.Dummy) (*pb.Pro
 }
 
 func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) error {
+
+	clientChannel := make(chan string, 2)
+	clientChannels = append(clientChannels, clientChannel)
+
+	log.Print("Connected")
+
+	go func() {
+		for {
+			select {
+			case toSend := <-clientChannel:
+				log.Print("Sending to client")
+				toSendGRPC := &pb.IncomingChatMessage{UserName: "", Message: toSend, Process: 1, Actions: 1}
+				msgStream.Send(toSendGRPC)
+			default:
+			}
+		}
+	}()
+
 	for {
 		// get the next message from the stream
 		msg, err := msgStream.Recv()
@@ -42,6 +75,8 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 		}
 		// log the message
 		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
+		handleMessageReceived(msg.Message)
+
 	}
 	return nil
 }
