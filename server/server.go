@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -13,7 +14,8 @@ import (
 )
 
 var (
-	port = flag.Int("port", 50051, "The server port")
+	port      = flag.Int("port", 50051, "The server port")
+	processes = 0
 )
 
 var clientChannels []chan string
@@ -32,6 +34,11 @@ func handleMessageReceived(message string) {
 
 type Server struct {
 	pb.UnimplementedTemplateServer
+}
+
+func (s Server) InitialiseConnection(ctx context.Context, in *pb.Dummy) (*pb.ProcessMessage, error) {
+	processes++
+	return (&pb.ProcessMessage{Process: int64(processes)}), nil
 }
 
 func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) error {

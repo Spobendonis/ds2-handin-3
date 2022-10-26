@@ -6,7 +6,6 @@ import (
 	"flag"
 	"log"
 	"os"
-	"time"
 
 	pb "proto/proto"
 
@@ -17,6 +16,8 @@ import (
 var (
 	userName   = flag.String("username", "anonymous", "The name others will see you by")
 	serverPort = flag.String("sPort", ":50051", "The port of the server")
+	actions    = 0
+	process    = -1
 )
 
 func main() {
@@ -24,7 +25,9 @@ func main() {
 	conn := ConnectToServer(*serverPort)
 	defer conn.Close()
 	c := pb.NewTemplateClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
+	ctx, cancel := context.WithCancel(context.Background())
+	initReply, _ := c.InitialiseConnection(ctx, &pb.Dummy{})
+	process = int(initReply.Process)
 	defer cancel()
 	// get a stream to the server
 	stream, err := c.SendChatMessage(ctx)
@@ -38,7 +41,7 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		if scanner.Scan() {
 			line = scanner.Text()
-
+			actions++
 			switch line {
 			case "exit":
 				stream.CloseSend()
@@ -46,7 +49,7 @@ func main() {
 				cancel()
 				log.Fatal("Goodbye ", *userName)
 			default:
-				stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: 1, Actions: 1, Message: line})
+				stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
 			}
 		}
 
@@ -60,5 +63,6 @@ func ConnectToServer(port string) *grpc.ClientConn {
 	if connectionErr != nil {
 		log.Fatalf("did not connect: %v", connectionErr)
 	}
+	actions++
 	return conn
 }

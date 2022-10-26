@@ -9,13 +9,19 @@ service Template
 {
     // send message
     rpc SendChatMessage (stream OutgoingChatMessage) returns (stream IncomingChatMessage);
+    rpc InitialiseConnection (Dummy) returns (ProcessMessage);
 }
 
+message Dummy {}
+
+message ProcessMessage {
+    int64 process = 1;
+}
 
 message OutgoingChatMessage {
     string userName = 1;
     string message = 2;
-
+    
     //(int64, int64) logTime = 3;
 
     int64 process = 3;
