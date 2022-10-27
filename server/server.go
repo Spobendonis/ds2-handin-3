@@ -52,7 +52,7 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 	clientChannels = append(clientChannels, clientChannel)
 
 	log.Print("Connected")
-	handleMessageReceived("New user has connected", "", 0, 0)
+	handleMessageReceived("New user has connected", "", int64(processes), 0)
 
 	go func() {
 		for {

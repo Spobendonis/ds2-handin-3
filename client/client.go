@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 
@@ -22,20 +23,12 @@ var (
 
 func main() {
 	flag.Parse()
-	conn := ConnectToServer(*serverAddress)
-	defer conn.Close()
-	c := pb.NewTemplateClient(conn)
-	ctx, cancel := context.WithCancel(context.Background())
-	initReply, _ := c.InitialiseConnection(ctx, &pb.Dummy{})
-	process = int(initReply.Process)
-	defer cancel()
-	// get a stream to the server
-	stream, err := c.SendChatMessage(ctx)
+	stream, conn, cancel, err := GetServerInfo(*serverAddress)
 	if err != nil {
 		log.Println(err)
-		return
 	}
-
+	defer conn.Close()
+	defer cancel()
 	var line string
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -45,7 +38,22 @@ func main() {
 				line = scanner.Text()
 				actions++
 				switch line {
-				case "exit":
+				case "join": //join chat
+					fmt.Println("Choose an address to join:")
+					if scanner.Scan() {
+						a := scanner.Text()
+						stream, conn, cancel, err = GetServerInfo(a)
+						if err != nil {
+							log.Println(err)
+						}
+					}
+				case "leave": //leave chat
+					actions = 0
+					stream.CloseSend()
+					conn.Close()
+					cancel()
+					log.Print("Leaving chat")
+				case "exit": //exit application
 					stream.CloseSend()
 					conn.Close()
 					cancel()
@@ -58,10 +66,28 @@ func main() {
 	}()
 
 	for {
-		msg, _ := stream.Recv()
-		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
+		msg, e := stream.Recv()
+		if e == nil {
+			if actions < int(msg.Actions) {
+				actions = int(msg.Actions)
+			}
+			log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
+		}
 	}
+}
 
+func GetServerInfo(addr string) (pb.Template_SendChatMessageClient, *grpc.ClientConn, context.CancelFunc, error) {
+	conn := ConnectToServer(addr)
+	c := pb.NewTemplateClient(conn)
+	ctx, cancel := context.WithCancel(context.Background())
+	initReply, _ := c.InitialiseConnection(ctx, &pb.Dummy{})
+	process = int(initReply.Process)
+	// get a stream to the server
+	stream, err := c.SendChatMessage(ctx)
+	if err != nil {
+		log.Println(err)
+	}
+	return stream, conn, cancel, err
 }
 
 func ConnectToServer(port string) *grpc.ClientConn {
