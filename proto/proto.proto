@@ -8,28 +8,19 @@ package proto;
 service Template
 {
     // send message
-    rpc SendChatMessage (stream OutgoingChatMessage) returns (stream IncomingChatMessage);
-    rpc InitialiseConnection (Dummy) returns (ProcessMessage);
+    rpc SendChatMessage (stream OutgoingMessage) returns (stream IncomingMessage);
 }
 
-message Dummy {}
-
-message ProcessMessage {
-    int64 process = 1;
-}
-
-message OutgoingChatMessage {
+message OutgoingMessage {
     string userName = 1;
     string message = 2;
     
-    //(int64, int64) logTime = 3;
-
     int64 process = 3;
     int64 actions = 4;
 }
 
 
-message IncomingChatMessage {
+message IncomingMessage {
     string userName = 1;
     string message = 2;
 

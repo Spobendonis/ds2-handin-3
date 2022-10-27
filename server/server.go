@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -41,24 +40,31 @@ type Server struct {
 	pb.UnimplementedTemplateServer
 }
 
-func (s Server) InitialiseConnection(ctx context.Context, in *pb.Dummy) (*pb.ProcessMessage, error) {
-	processes++
-	return (&pb.ProcessMessage{Process: int64(processes)}), nil
-}
-
 func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) error {
 
 	clientChannel := make(chan messageStruct, 2)
 	clientChannels = append(clientChannels, clientChannel)
 
+	initialMessage, initialError := msgStream.Recv()
+
+	if initialError != nil {
+		return initialError
+	}
+
+	processes++
+
+	username := initialMessage.UserName
+	process := processes
+	msgStream.Send(&pb.IncomingMessage{UserName: username, Message: "", Process: int64(process), Actions: initialMessage.Actions})
+
 	log.Print("Connected")
-	handleMessageReceived("New user has connected", "", int64(processes), 0)
+	handleMessageReceived(" has connected", username, int64(process), initialMessage.Actions)
 
 	go func() {
 		for {
 			toSend := <-clientChannel
 			log.Print("Sending to client")
-			toSendGRPC := &pb.IncomingChatMessage{UserName: toSend.username, Message: toSend.message, Process: toSend.process, Actions: toSend.actions}
+			toSendGRPC := &pb.IncomingMessage{UserName: toSend.username, Message: toSend.message, Process: toSend.process, Actions: toSend.actions}
 			msgStream.Send(toSendGRPC)
 		}
 	}()
@@ -69,15 +75,17 @@ func (s *Server) SendChatMessage(msgStream pb.Template_SendChatMessageServer) er
 
 		// the stream is closed so we can exit the loop
 		if err == io.EOF {
+			handleMessageReceived(" has left", username, int64(process), initialMessage.Actions)
 			break
 		}
 		// some other error
 		if err != nil {
+			handleMessageReceived(" has disconnected", username, int64(process), initialMessage.Actions)
 			return err
 		}
 		// log the message
 		log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
-		handleMessageReceived(msg.Message, msg.UserName, msg.Process, msg.Actions)
+		handleMessageReceived(": "+msg.Message, msg.UserName, msg.Process, msg.Actions)
 	}
 	return nil
 }

@@ -16,7 +16,7 @@ import (
 
 var (
 	userName      = flag.String("username", "anonymous", "The name others will see you by")
-	serverAddress = flag.String("sAddress", "172.20.10.4:50051", "The port of the server")
+	serverAddress = flag.String("sAddress", ":50051", "The port of the server")
 	actions       = 0
 	process       = -1
 )
@@ -59,7 +59,7 @@ func main() {
 					cancel()
 					log.Fatal("Goodbye ", *userName)
 				default:
-					stream.Send(&pb.OutgoingChatMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
+					stream.Send(&pb.OutgoingMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
 				}
 			}
 		}
@@ -71,7 +71,7 @@ func main() {
 			if actions < int(msg.Actions) {
 				actions = int(msg.Actions)
 			}
-			log.Printf("%s (%d, %d): %s", msg.UserName, msg.Process, msg.Actions, msg.Message)
+			log.Printf("%s (%d, %d)%s", msg.UserName, msg.Process, msg.Actions, msg.Message)
 		}
 	}
 }
@@ -80,13 +80,19 @@ func GetServerInfo(addr string) (pb.Template_SendChatMessageClient, *grpc.Client
 	conn := ConnectToServer(addr)
 	c := pb.NewTemplateClient(conn)
 	ctx, cancel := context.WithCancel(context.Background())
-	initReply, _ := c.InitialiseConnection(ctx, &pb.Dummy{})
-	process = int(initReply.Process)
 	// get a stream to the server
 	stream, err := c.SendChatMessage(ctx)
 	if err != nil {
 		log.Println(err)
 	}
+	stream.Send(&pb.OutgoingMessage{UserName: *userName, Process: 0, Actions: 0, Message: ""})
+	msg, e := stream.Recv()
+	if e != nil {
+		log.Println(e)
+	}
+
+	process = int(msg.Process)
+
 	return stream, conn, cancel, err
 }
 
