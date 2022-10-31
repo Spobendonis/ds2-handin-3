@@ -75,6 +75,7 @@ func main() {
 			if actions < int(msg.Actions) {
 				actions = int(msg.Actions)
 			}
+			actions++
 			log.Printf("%s (%d, %d)%s", msg.UserName, msg.Process, msg.Actions, msg.Message)
 		}
 	}
