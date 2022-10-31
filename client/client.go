@@ -36,30 +36,34 @@ func main() {
 		for {
 			if scanner.Scan() {
 				line = scanner.Text()
-				actions++
-				switch line {
-				case "join": //join chat
-					fmt.Println("Choose an address to join:")
-					if scanner.Scan() {
-						a := scanner.Text()
-						stream, conn, cancel, err = GetServerInfo(a)
-						if err != nil {
-							log.Println(err)
+				if len(line) > 128 {
+					log.Println("Message too long: Exceeds 128 Characters!")
+				} else {
+					actions++
+					switch line {
+					case "join": //join chat
+						fmt.Println("Choose an address to join:")
+						if scanner.Scan() {
+							a := scanner.Text()
+							stream, conn, cancel, err = GetServerInfo(a)
+							if err != nil {
+								log.Println(err)
+							}
 						}
+					case "leave": //leave chat
+						actions = 0
+						stream.CloseSend()
+						conn.Close()
+						cancel()
+						log.Print("Leaving chat")
+					case "exit": //exit application
+						stream.CloseSend()
+						conn.Close()
+						cancel()
+						log.Fatal("Goodbye ", *userName)
+					default:
+						stream.Send(&pb.OutgoingMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
 					}
-				case "leave": //leave chat
-					actions = 0
-					stream.CloseSend()
-					conn.Close()
-					cancel()
-					log.Print("Leaving chat")
-				case "exit": //exit application
-					stream.CloseSend()
-					conn.Close()
-					cancel()
-					log.Fatal("Goodbye ", *userName)
-				default:
-					stream.Send(&pb.OutgoingMessage{UserName: *userName, Process: int64(process), Actions: int64(actions), Message: line})
 				}
 			}
 		}
